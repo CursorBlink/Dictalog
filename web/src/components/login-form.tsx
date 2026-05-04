@@ -1,12 +1,15 @@
+import { useState } from "react"
+import { useRouter } from "@tanstack/react-router"
 import { cn } from "#/lib/utils"
+import { authClient } from "#/lib/auth-client"
 import { Button } from "#/components/ui/button"
 import { Card, CardContent } from "#/components/ui/card"
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
-  FieldSeparator,
 } from "#/components/ui/field"
 import { Input } from "#/components/ui/input"
 
@@ -14,22 +17,46 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = new FormData(e.currentTarget)
+    const email = form.get("email") as string
+    const password = form.get("password") as string
+
+    await authClient.signIn.email(
+      { email, password, rememberMe: true },
+      {
+        onRequest: () => setLoading(true),
+        onSuccess: () => router.navigate({ to: "/dashboard" }),
+        onError: (ctx) => {
+          setError(ctx.error.message)
+          setLoading(false)
+        },
+      },
+    )
+  }
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
-          <form className="p-6 md:p-8">
+          <form className="p-6 md:p-8" onSubmit={handleSubmit}>
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center">
                 <h1 className="text-2xl font-bold">Welcome back</h1>
                 <p className="text-balance text-muted-foreground">
-                  Login to your Acme Inc account
+                  Login to your Dictalog account
                 </p>
               </div>
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="m@example.com"
                   required
@@ -45,15 +72,15 @@ export function LoginForm({
                     Forgot your password?
                   </a>
                 </div>
-                <Input id="password" type="password" required />
+                <Input id="password" name="password" type="password" required />
               </Field>
+              {error && <FieldError>{error}</FieldError>}
               <Field>
-                <Button type="submit">Login</Button>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Signing in…" : "Sign in"}
+                </Button>
               </Field>
-              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-                Or continue with
-              </FieldSeparator>
-             <FieldDescription className="text-center">
+              <FieldDescription className="text-center">
                 Don&apos;t have an account? <a href="/sign-up">Sign up</a>
               </FieldDescription>
             </FieldGroup>
