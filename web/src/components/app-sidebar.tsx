@@ -37,10 +37,6 @@ const data = {
           title: "Starred",
           url: "#",
         },
-        {
-          title: "Settings",
-          url: "#",
-        },
       ],
     },
     {
@@ -93,27 +89,15 @@ const data = {
     },
     {
       title: "Settings",
-      url: "#",
+      url: "/settings/sources",
       icon: (
         <Settings2Icon
         />
       ),
       items: [
         {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
+          title: "Sources",
+          url: "/settings/sources",
         },
       ],
     },

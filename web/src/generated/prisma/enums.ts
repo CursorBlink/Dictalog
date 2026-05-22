@@ -9,7 +9,8 @@
 * 🟢 You can import this file directly.
 */
 
+export const SourceType = {
+  S3: 'S3'
+} as const
 
-
-// This file is empty because there are no enums in the schema.
-export {}
+export type SourceType = (typeof SourceType)[keyof typeof SourceType]

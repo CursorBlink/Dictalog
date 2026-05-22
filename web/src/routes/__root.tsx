@@ -22,7 +22,19 @@ export const Route = createRootRoute({
     }],
   }),
   shellComponent: RootDocument,
+  notFoundComponent: NotFound,
 })
+
+function NotFound() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+      <h1 className="text-2xl font-semibold">404 — Page not found</h1>
+      <a href="/" className="text-sm text-primary underline underline-offset-4">
+        Go home
+      </a>
+    </div>
+  )
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
