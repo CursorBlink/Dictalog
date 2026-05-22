@@ -1,8 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
-import { EyeIcon, EyeOffIcon, PlusIcon, PencilIcon, Trash2Icon } from 'lucide-react'
+import {
+  EyeIcon,
+  EyeOffIcon,
+  PlusIcon,
+  PencilIcon,
+  Trash2Icon,
+  Loader2Icon,
+  CheckCircle2Icon,
+  AlertTriangleIcon,
+} from 'lucide-react'
 import { z } from 'zod'
 
 import { auth } from '@/lib/auth'
@@ -23,6 +32,10 @@ import { Field, FieldLabel, FieldError, FieldGroup } from '@/components/ui/field
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const DRAFT_KEY = 'dictalog:source-config-draft'
 
 // ─── Server functions ────────────────────────────────────────────────────────
 
@@ -112,6 +125,55 @@ const deleteSourceConfig = createServerFn({ method: 'POST' })
     return prisma.sourceConfig.delete({ where: { id: data.id } })
   })
 
+const testS3ConnectionFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        bucket: z.string().min(1),
+        region: z.string().min(1),
+        accessKeyId: z.string().min(1),
+        secretAccessKey: z.string().min(1),
+      })
+      .parse(data)
+  )
+  .handler(async ({ data }) => {
+    const headers = getRequestHeaders()
+    const session = await auth.api.getSession({ headers })
+    if (!session) throw new Error('Unauthorized')
+
+    const { S3Client, HeadBucketCommand, ListBucketsCommand } = await import('@aws-sdk/client-s3')
+
+    const client = new S3Client({
+      region: data.region,
+      credentials: {
+        accessKeyId: data.accessKeyId,
+        secretAccessKey: data.secretAccessKey,
+      },
+    })
+
+    try {
+      await client.send(new HeadBucketCommand({ Bucket: data.bucket }))
+    } catch (err: unknown) {
+      const e = err as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } }
+      return {
+        success: false as const,
+        overPermissioned: false,
+        errorCode: e.name ?? 'UnknownError',
+        errorMessage: e.message ?? 'Connection test failed',
+      }
+    }
+
+    let overPermissioned = false
+    try {
+      await client.send(new ListBucketsCommand({}))
+      overPermissioned = true
+    } catch {
+      // AccessDenied on ListBuckets is expected and desired — not over-permissioned
+    }
+
+    return { success: true as const, overPermissioned }
+  })
+
 // ─── Route ───────────────────────────────────────────────────────────────────
 
 export const Route = createFileRoute('/_authenticated/settings/sources')({
@@ -134,6 +196,18 @@ type FormState = {
 
 type FormErrors = Partial<Record<keyof FormState, string>>
 
+type TestResult = 'idle' | 'pending' | 'passed' | 'failed'
+
+type Draft = {
+  formMode: 'add' | 'edit'
+  editingId: string | null
+  name: string
+  bucket: string
+  region: string
+  accessKeyId: string
+  prefix: string
+}
+
 const emptyForm: FormState = {
   name: '',
   bucket: '',
@@ -143,6 +217,8 @@ const emptyForm: FormState = {
   prefix: '',
 }
 
+const CREDENTIAL_FIELDS = new Set<keyof FormState>(['bucket', 'region', 'accessKeyId', 'secretAccessKey'])
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 function SourcesPage() {
@@ -151,45 +227,113 @@ function SourcesPage() {
 
   const [formMode, setFormMode] = useState<'idle' | 'add' | 'edit'>('idle')
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>(emptyForm)
+  const [form, setFormState] = useState<FormState>(emptyForm)
   const [errors, setErrors] = useState<FormErrors>({})
   const [secretVisible, setSecretVisible] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  const [testResult, setTestResult] = useState<TestResult>('idle')
+  const [testError, setTestError] = useState<string>('')
+  const [overPermissioned, setOverPermissioned] = useState(false)
+  const [warningAcknowledged, setWarningAcknowledged] = useState(false)
+  const [restoredFromDraft, setRestoredFromDraft] = useState(false)
+
+  // Restore draft from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY)
+      if (!raw) return
+      const draft = JSON.parse(raw) as Draft
+      setFormState({
+        name: draft.name ?? '',
+        bucket: draft.bucket ?? '',
+        region: draft.region ?? '',
+        accessKeyId: draft.accessKeyId ?? '',
+        secretAccessKey: '',
+        prefix: draft.prefix ?? '',
+      })
+      setEditingId(draft.editingId)
+      setFormMode(draft.formMode)
+      setRestoredFromDraft(true)
+    } catch {
+      // Ignore malformed draft
+    }
+  }, [])
+
+  function saveDraft(mode: 'add' | 'edit', id: string | null, fields: FormState) {
+    const draft: Draft = {
+      formMode: mode,
+      editingId: id,
+      name: fields.name,
+      bucket: fields.bucket,
+      region: fields.region,
+      accessKeyId: fields.accessKeyId,
+      prefix: fields.prefix,
+      // secretAccessKey intentionally omitted
+    }
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+  }
+
+  function clearDraft() {
+    sessionStorage.removeItem(DRAFT_KEY)
+  }
+
+  function resetTestState() {
+    setTestResult('idle')
+    setTestError('')
+    setOverPermissioned(false)
+    setWarningAcknowledged(false)
+  }
+
   function openAdd() {
-    setForm(emptyForm)
+    setFormState(emptyForm)
     setErrors({})
     setSecretVisible(false)
     setEditingId(null)
     setFormMode('add')
+    setRestoredFromDraft(false)
+    resetTestState()
   }
 
   function openEdit(source: SourceConfigItem) {
-    setForm({
+    const fields: FormState = {
       name: source.name,
       bucket: source.config.bucket,
       region: source.config.region,
       accessKeyId: source.config.accessKeyId,
       secretAccessKey: '',
       prefix: source.config.prefix ?? '',
-    })
+    }
+    setFormState(fields)
     setErrors({})
     setSecretVisible(false)
     setEditingId(source.id)
     setFormMode('edit')
+    setRestoredFromDraft(false)
+    resetTestState()
   }
 
   function closeForm() {
+    clearDraft()
     setFormMode('idle')
     setEditingId(null)
     setErrors({})
     setSecretVisible(false)
+    setRestoredFromDraft(false)
+    resetTestState()
   }
 
   function setField(field: keyof FormState, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    const next = { ...form, [field]: value }
+    setFormState(next)
     setErrors((prev) => ({ ...prev, [field]: undefined }))
+    if (formMode === 'add' || formMode === 'edit') {
+      saveDraft(formMode, editingId, next)
+    }
+    if (CREDENTIAL_FIELDS.has(field)) {
+      resetTestState()
+    }
   }
 
   function validateAdd(): FormErrors | null {
@@ -224,8 +368,57 @@ function SourcesPage() {
     return extractErrors(result.error.issues)
   }
 
+  function validateCredentials(): string | null {
+    if (!form.bucket) return 'Bucket is required'
+    if (!form.region) return 'Region is required'
+    if (!form.accessKeyId) return 'Access key ID is required'
+    if (!form.secretAccessKey) return 'Secret access key is required to test the connection'
+    return null
+  }
+
+  async function handleTestConnection() {
+    const credentialError = validateCredentials()
+    if (credentialError) {
+      setTestError(credentialError)
+      setTestResult('failed')
+      return
+    }
+
+    setTestResult('pending')
+    setTestError('')
+    setOverPermissioned(false)
+    setWarningAcknowledged(false)
+
+    try {
+      const result = await testS3ConnectionFn({
+        data: {
+          bucket: form.bucket,
+          region: form.region,
+          accessKeyId: form.accessKeyId,
+          secretAccessKey: form.secretAccessKey,
+        },
+      })
+
+      if (result.success) {
+        setTestResult('passed')
+        setOverPermissioned(result.overPermissioned)
+      } else {
+        setTestResult('failed')
+        setTestError(result.errorMessage ?? 'Connection test failed')
+      }
+    } catch (err: unknown) {
+      setTestResult('failed')
+      setTestError(err instanceof Error ? err.message : 'Connection test failed')
+    }
+  }
+
+  const saveDisabled =
+    testResult !== 'passed' || (overPermissioned && !warningAcknowledged)
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (saveDisabled) return
+
     const fieldErrors = formMode === 'add' ? validateAdd() : validateEdit()
     if (fieldErrors) {
       setErrors(fieldErrors)
@@ -264,6 +457,7 @@ function SourcesPage() {
           },
         })
       }
+      clearDraft()
       closeForm()
       await router.invalidate()
     } finally {
@@ -396,9 +590,15 @@ function SourcesPage() {
                         {secretVisible ? <EyeOffIcon /> : <EyeIcon />}
                       </Button>
                     </div>
-                    {formMode === 'edit' && !form.secretAccessKey && (
+                    {formMode === 'edit' && !form.secretAccessKey && !restoredFromDraft && (
                       <p className="text-xs text-muted-foreground">
                         Leave blank to keep the existing secret.
+                      </p>
+                    )}
+                    {restoredFromDraft && (
+                      <p className="text-xs text-amber-600">
+                        Your draft was restored, but the secret access key was not saved for
+                        security reasons. Please re-enter it before testing.
                       </p>
                     )}
                     <FieldError>{errors.secretAccessKey}</FieldError>
@@ -416,8 +616,60 @@ function SourcesPage() {
                     <FieldError>{errors.prefix}</FieldError>
                   </Field>
 
-                  <div className="flex gap-2 pt-2">
-                    <Button type="submit" disabled={submitting} size="sm">
+                  {/* Test result feedback */}
+                  {testResult === 'passed' && !overPermissioned && (
+                    <p className="flex items-center gap-1.5 text-sm text-green-600">
+                      <CheckCircle2Icon className="size-4 shrink-0" />
+                      Connection successful
+                    </p>
+                  )}
+
+                  {testResult === 'failed' && (
+                    <p className="text-sm text-destructive">{testError}</p>
+                  )}
+
+                  {overPermissioned && (
+                    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
+                        <div className="flex flex-col gap-2">
+                          <p>
+                            These credentials have permission to list <strong>all S3 buckets</strong> in the
+                            account, not just <code className="rounded bg-amber-100 px-1">{form.bucket}</code>.
+                            Consider using a more restrictive IAM policy scoped to this bucket only.
+                          </p>
+                          <label className="flex cursor-pointer items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={warningAcknowledged}
+                              onChange={(e) => setWarningAcknowledged(e.target.checked)}
+                              className="size-4"
+                            />
+                            I understand and want to proceed anyway
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTestConnection}
+                      disabled={testResult === 'pending'}
+                    >
+                      {testResult === 'pending' ? (
+                        <>
+                          <Loader2Icon className="animate-spin" />
+                          Testing…
+                        </>
+                      ) : (
+                        'Test Connection'
+                      )}
+                    </Button>
+                    <Button type="submit" disabled={submitting || saveDisabled} size="sm">
                       {submitting ? 'Saving…' : 'Save'}
                     </Button>
                     <Button
