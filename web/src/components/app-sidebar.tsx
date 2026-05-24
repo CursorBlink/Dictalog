@@ -16,7 +16,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, LifeBuoyIcon, SendIcon, FrameIcon, PieChartIcon, MapIcon, TerminalIcon } from "lucide-react"
+import { TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, LifeBuoyIcon, SendIcon, FrameIcon, PieChartIcon, MapIcon, TerminalIcon, BriefcaseIcon } from "lucide-react"
 
 const data = {
  navMain: [
@@ -84,6 +84,20 @@ const data = {
         {
           title: "Changelog",
           url: "#",
+        },
+      ],
+    },
+    {
+      title: "Jobs",
+      url: "/jobs/s3-audio-analysis",
+      icon: (
+        <BriefcaseIcon
+        />
+      ),
+      items: [
+        {
+          title: "S3 Audio Analysis",
+          url: "/jobs/s3-audio-analysis",
         },
       ],
     },

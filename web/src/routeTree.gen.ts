@@ -15,10 +15,13 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedJobsRouteImport } from './routes/_authenticated/jobs'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
+import { Route as AuthenticatedJobsIndexRouteImport } from './routes/_authenticated/jobs/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedSettingsSourcesRouteImport } from './routes/_authenticated/settings/sources'
+import { Route as AuthenticatedJobsS3AudioAnalysisRouteImport } from './routes/_authenticated/jobs/s3-audio-analysis'
 
 const SignUpRoute = SignUpRouteImport.update({
   id: '/sign-up',
@@ -49,6 +52,11 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedJobsRoute = AuthenticatedJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -60,6 +68,11 @@ const AuthenticatedSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const AuthenticatedJobsIndexRoute = AuthenticatedJobsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedJobsRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -71,6 +84,12 @@ const AuthenticatedSettingsSourcesRoute =
     path: '/sources',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const AuthenticatedJobsS3AudioAnalysisRoute =
+  AuthenticatedJobsS3AudioAnalysisRouteImport.update({
+    id: '/s3-audio-analysis',
+    path: '/s3-audio-analysis',
+    getParentRoute: () => AuthenticatedJobsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -78,9 +97,12 @@ export interface FileRoutesByFullPath {
   '/sign-out': typeof SignOutRoute
   '/sign-up': typeof SignUpRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/jobs': typeof AuthenticatedJobsRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRouteWithChildren
+  '/jobs/s3-audio-analysis': typeof AuthenticatedJobsS3AudioAnalysisRoute
   '/settings/sources': typeof AuthenticatedSettingsSourcesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/jobs/': typeof AuthenticatedJobsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -89,8 +111,10 @@ export interface FileRoutesByTo {
   '/sign-up': typeof SignUpRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/': typeof AuthenticatedIndexRoute
+  '/jobs/s3-audio-analysis': typeof AuthenticatedJobsS3AudioAnalysisRoute
   '/settings/sources': typeof AuthenticatedSettingsSourcesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/jobs': typeof AuthenticatedJobsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRoutesById {
@@ -100,10 +124,13 @@ export interface FileRoutesById {
   '/sign-out': typeof SignOutRoute
   '/sign-up': typeof SignUpRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/jobs': typeof AuthenticatedJobsRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/jobs/s3-audio-analysis': typeof AuthenticatedJobsS3AudioAnalysisRoute
   '/_authenticated/settings/sources': typeof AuthenticatedSettingsSourcesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_authenticated/jobs/': typeof AuthenticatedJobsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -114,9 +141,12 @@ export interface FileRouteTypes {
     | '/sign-out'
     | '/sign-up'
     | '/dashboard'
+    | '/jobs'
     | '/settings'
+    | '/jobs/s3-audio-analysis'
     | '/settings/sources'
     | '/api/auth/$'
+    | '/jobs/'
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -125,8 +155,10 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/dashboard'
     | '/'
+    | '/jobs/s3-audio-analysis'
     | '/settings/sources'
     | '/api/auth/$'
+    | '/jobs'
     | '/settings'
   id:
     | '__root__'
@@ -135,10 +167,13 @@ export interface FileRouteTypes {
     | '/sign-out'
     | '/sign-up'
     | '/_authenticated/dashboard'
+    | '/_authenticated/jobs'
     | '/_authenticated/settings'
     | '/_authenticated/'
+    | '/_authenticated/jobs/s3-audio-analysis'
     | '/_authenticated/settings/sources'
     | '/api/auth/$'
+    | '/_authenticated/jobs/'
     | '/_authenticated/settings/'
   fileRoutesById: FileRoutesById
 }
@@ -194,6 +229,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/jobs': {
+      id: '/_authenticated/jobs'
+      path: '/jobs'
+      fullPath: '/jobs'
+      preLoaderRoute: typeof AuthenticatedJobsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -207,6 +249,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/'
       preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/jobs/': {
+      id: '/_authenticated/jobs/'
+      path: '/'
+      fullPath: '/jobs/'
+      preLoaderRoute: typeof AuthenticatedJobsIndexRouteImport
+      parentRoute: typeof AuthenticatedJobsRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -222,8 +271,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsSourcesRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
+    '/_authenticated/jobs/s3-audio-analysis': {
+      id: '/_authenticated/jobs/s3-audio-analysis'
+      path: '/s3-audio-analysis'
+      fullPath: '/jobs/s3-audio-analysis'
+      preLoaderRoute: typeof AuthenticatedJobsS3AudioAnalysisRouteImport
+      parentRoute: typeof AuthenticatedJobsRoute
+    }
   }
 }
+
+interface AuthenticatedJobsRouteChildren {
+  AuthenticatedJobsS3AudioAnalysisRoute: typeof AuthenticatedJobsS3AudioAnalysisRoute
+  AuthenticatedJobsIndexRoute: typeof AuthenticatedJobsIndexRoute
+}
+
+const AuthenticatedJobsRouteChildren: AuthenticatedJobsRouteChildren = {
+  AuthenticatedJobsS3AudioAnalysisRoute: AuthenticatedJobsS3AudioAnalysisRoute,
+  AuthenticatedJobsIndexRoute: AuthenticatedJobsIndexRoute,
+}
+
+const AuthenticatedJobsRouteWithChildren =
+  AuthenticatedJobsRoute._addFileChildren(AuthenticatedJobsRouteChildren)
 
 interface AuthenticatedSettingsRouteChildren {
   AuthenticatedSettingsSourcesRoute: typeof AuthenticatedSettingsSourcesRoute
@@ -242,12 +311,14 @@ const AuthenticatedSettingsRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedJobsRoute: typeof AuthenticatedJobsRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedJobsRoute: AuthenticatedJobsRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }

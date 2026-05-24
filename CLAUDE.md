@@ -52,4 +52,10 @@ docker compose up -d  # from repo root
 
 **UI components**: shadcn-style components in `src/components/ui/`. Includes a custom `Field` system (`Field`, `FieldGroup`, `FieldLabel`, `FieldDescription`, `FieldError`) built for form layouts — prefer this over raw label/input composition.
 
+**Adding components**: Always use the shadcn CLI to add new UI components — run from `web/`:
+```bash
+npx shadcn@latest add <component-name>
+```
+Never manually create component files in `src/components/ui/` when the CLI can generate them.
+
 **Worker**: `worker/` directory exists but is empty — intended for background job processing (Redis-backed, per docker-compose).

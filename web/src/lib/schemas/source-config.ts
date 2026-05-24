@@ -5,6 +5,9 @@ export const s3ConfigSchema = z.object({
   region: z.string().min(1, "Region is required"),
   accessKeyId: z.string().min(1, "Access key ID is required"),
   secretAccessKey: z.string().min(1, "Secret access key is required"),
+  endpoint: z.string().url("Endpoint must be a valid URL").optional(),
+  forcePathStyle: z.boolean().optional(),
+  tlsVerify: z.boolean().optional(),
   prefix: z.string().optional(),
 })
 

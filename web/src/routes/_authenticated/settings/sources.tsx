@@ -50,16 +50,19 @@ const listSourceConfigs = createServerFn().handler(async () => {
   })
 
   return configs.map((c) => {
-    const cfg = c.config as Record<string, string>
+    const cfg = c.config as Record<string, unknown>
     return {
       id: c.id,
       name: c.name,
       type: c.type,
       config: {
-        bucket: cfg.bucket,
-        region: cfg.region,
-        accessKeyId: cfg.accessKeyId,
-        prefix: cfg.prefix,
+        bucket: cfg.bucket as string,
+        region: cfg.region as string,
+        accessKeyId: cfg.accessKeyId as string,
+        prefix: cfg.prefix as string | undefined,
+        endpoint: cfg.endpoint as string | undefined,
+        forcePathStyle: cfg.forcePathStyle as boolean | undefined,
+        tlsVerify: cfg.tlsVerify as boolean | undefined,
       },
       createdAt: c.createdAt.toISOString(),
       updatedAt: c.updatedAt.toISOString(),
@@ -133,6 +136,9 @@ const testS3ConnectionFn = createServerFn({ method: 'POST' })
         region: z.string().min(1),
         accessKeyId: z.string().min(1),
         secretAccessKey: z.string().min(1),
+        endpoint: z.string().url().optional(),
+        forcePathStyle: z.boolean().optional(),
+        tlsVerify: z.boolean().optional(),
       })
       .parse(data)
   )
@@ -143,12 +149,24 @@ const testS3ConnectionFn = createServerFn({ method: 'POST' })
 
     const { S3Client, HeadBucketCommand, ListBucketsCommand } = await import('@aws-sdk/client-s3')
 
+    let requestHandler: unknown
+    if (data.tlsVerify === false) {
+      const https = await import('https')
+      const { NodeHttpHandler } = await import('@smithy/node-http-handler')
+      requestHandler = new NodeHttpHandler({
+        httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+      })
+    }
+
     const client = new S3Client({
       region: data.region,
       credentials: {
         accessKeyId: data.accessKeyId,
         secretAccessKey: data.secretAccessKey,
       },
+      ...(data.endpoint ? { endpoint: data.endpoint } : {}),
+      ...(data.forcePathStyle ? { forcePathStyle: true } : {}),
+      ...(requestHandler ? { requestHandler } : {}),
     })
 
     try {
@@ -165,8 +183,9 @@ const testS3ConnectionFn = createServerFn({ method: 'POST' })
 
     let overPermissioned = false
     try {
-      await client.send(new ListBucketsCommand({}))
-      overPermissioned = true
+      const { Buckets } = await client.send(new ListBucketsCommand({}))
+      const otherBuckets = (Buckets ?? []).filter((b) => b.Name !== data.bucket)
+      overPermissioned = otherBuckets.length > 0
     } catch {
       // AccessDenied on ListBuckets is expected and desired — not over-permissioned
     }
@@ -191,6 +210,9 @@ type FormState = {
   region: string
   accessKeyId: string
   secretAccessKey: string
+  endpoint: string
+  forcePathStyle: boolean
+  tlsVerify: boolean
   prefix: string
 }
 
@@ -205,6 +227,9 @@ type Draft = {
   bucket: string
   region: string
   accessKeyId: string
+  endpoint: string
+  forcePathStyle: boolean
+  tlsVerify: boolean
   prefix: string
 }
 
@@ -214,10 +239,15 @@ const emptyForm: FormState = {
   region: '',
   accessKeyId: '',
   secretAccessKey: '',
+  endpoint: '',
+  forcePathStyle: false,
+  tlsVerify: true,
   prefix: '',
 }
 
-const CREDENTIAL_FIELDS = new Set<keyof FormState>(['bucket', 'region', 'accessKeyId', 'secretAccessKey'])
+const CREDENTIAL_FIELDS = new Set<keyof FormState>([
+  'bucket', 'region', 'accessKeyId', 'secretAccessKey', 'endpoint', 'forcePathStyle', 'tlsVerify',
+])
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -251,6 +281,9 @@ function SourcesPage() {
         region: draft.region ?? '',
         accessKeyId: draft.accessKeyId ?? '',
         secretAccessKey: '',
+        endpoint: draft.endpoint ?? '',
+        forcePathStyle: draft.forcePathStyle ?? false,
+        tlsVerify: draft.tlsVerify ?? true,
         prefix: draft.prefix ?? '',
       })
       setEditingId(draft.editingId)
@@ -269,6 +302,9 @@ function SourcesPage() {
       bucket: fields.bucket,
       region: fields.region,
       accessKeyId: fields.accessKeyId,
+      endpoint: fields.endpoint,
+      forcePathStyle: fields.forcePathStyle,
+      tlsVerify: fields.tlsVerify,
       prefix: fields.prefix,
       // secretAccessKey intentionally omitted
     }
@@ -303,6 +339,9 @@ function SourcesPage() {
       region: source.config.region,
       accessKeyId: source.config.accessKeyId,
       secretAccessKey: '',
+      endpoint: source.config.endpoint ?? '',
+      forcePathStyle: source.config.forcePathStyle ?? false,
+      tlsVerify: source.config.tlsVerify ?? true,
       prefix: source.config.prefix ?? '',
     }
     setFormState(fields)
@@ -336,17 +375,35 @@ function SourcesPage() {
     }
   }
 
+  function setBoolField(field: keyof FormState, value: boolean) {
+    const next = { ...form, [field]: value }
+    setFormState(next)
+    if (formMode === 'add' || formMode === 'edit') {
+      saveDraft(formMode, editingId, next)
+    }
+    if (CREDENTIAL_FIELDS.has(field)) {
+      resetTestState()
+    }
+  }
+
+  function buildConfigPayload() {
+    return {
+      bucket: form.bucket,
+      region: form.region,
+      accessKeyId: form.accessKeyId,
+      secretAccessKey: form.secretAccessKey,
+      endpoint: form.endpoint || undefined,
+      forcePathStyle: form.forcePathStyle || undefined,
+      tlsVerify: form.tlsVerify === false ? false : undefined,
+      prefix: form.prefix || undefined,
+    }
+  }
+
   function validateAdd(): FormErrors | null {
     const result = sourceConfigSchema.safeParse({
       name: form.name,
       type: 'S3',
-      config: {
-        bucket: form.bucket,
-        region: form.region,
-        accessKeyId: form.accessKeyId,
-        secretAccessKey: form.secretAccessKey,
-        prefix: form.prefix || undefined,
-      },
+      config: buildConfigPayload(),
     })
     if (result.success) return null
     return extractErrors(result.error.issues)
@@ -356,13 +413,7 @@ function SourcesPage() {
     const result = updateSourceConfigSchema.safeParse({
       name: form.name,
       type: 'S3',
-      config: {
-        bucket: form.bucket,
-        region: form.region,
-        accessKeyId: form.accessKeyId,
-        secretAccessKey: form.secretAccessKey,
-        prefix: form.prefix || undefined,
-      },
+      config: buildConfigPayload(),
     })
     if (result.success) return null
     return extractErrors(result.error.issues)
@@ -396,6 +447,9 @@ function SourcesPage() {
           region: form.region,
           accessKeyId: form.accessKeyId,
           secretAccessKey: form.secretAccessKey,
+          endpoint: form.endpoint || undefined,
+          forcePathStyle: form.forcePathStyle || undefined,
+          tlsVerify: form.tlsVerify === false ? false : undefined,
         },
       })
 
@@ -432,13 +486,7 @@ function SourcesPage() {
           data: {
             name: form.name,
             type: 'S3',
-            config: {
-              bucket: form.bucket,
-              region: form.region,
-              accessKeyId: form.accessKeyId,
-              secretAccessKey: form.secretAccessKey,
-              prefix: form.prefix || undefined,
-            },
+            config: buildConfigPayload(),
           },
         })
       } else if (formMode === 'edit' && editingId) {
@@ -447,13 +495,7 @@ function SourcesPage() {
             id: editingId,
             name: form.name,
             type: 'S3',
-            config: {
-              bucket: form.bucket,
-              region: form.region,
-              accessKeyId: form.accessKeyId,
-              secretAccessKey: form.secretAccessKey,
-              prefix: form.prefix || undefined,
-            },
+            config: buildConfigPayload(),
           },
         })
       }
@@ -603,6 +645,61 @@ function SourcesPage() {
                     )}
                     <FieldError>{errors.secretAccessKey}</FieldError>
                   </Field>
+
+                  <Field data-invalid={!!errors.endpoint}>
+                    <FieldLabel htmlFor="endpoint">Endpoint (optional)</FieldLabel>
+                    <Input
+                      id="endpoint"
+                      value={form.endpoint}
+                      onChange={(e) => setField('endpoint', e.target.value)}
+                      placeholder="https://minio.example.com"
+                      aria-invalid={!!errors.endpoint}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Leave blank to use AWS. Required for MinIO, RustFS, and other S3-compatible platforms.
+                    </p>
+                    <FieldError>{errors.endpoint}</FieldError>
+                  </Field>
+
+                  <div className="flex flex-col gap-3">
+                    <label className="flex cursor-pointer items-start gap-2">
+                      <input
+                        type="checkbox"
+                        checked={form.forcePathStyle}
+                        onChange={(e) => setBoolField('forcePathStyle', e.target.checked)}
+                        className="mt-0.5 size-4"
+                      />
+                      <div>
+                        <span className="text-sm font-medium">Force path-style addressing</span>
+                        <p className="text-xs text-muted-foreground">
+                          Required for some MinIO and RustFS configurations.
+                        </p>
+                      </div>
+                    </label>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="flex cursor-pointer items-start gap-2">
+                        <input
+                          type="checkbox"
+                          checked={!form.tlsVerify}
+                          onChange={(e) => setBoolField('tlsVerify', !e.target.checked)}
+                          className="mt-0.5 size-4"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">Disable TLS verification</span>
+                          <p className="text-xs text-muted-foreground">
+                            Use only for private deployments with self-signed certificates.
+                          </p>
+                        </div>
+                      </label>
+                      {!form.tlsVerify && (
+                        <div className="ml-6 flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs text-amber-800">
+                          <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                          Disabling TLS verification exposes this connection to potential man-in-the-middle attacks. Only use this on trusted private networks.
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                   <Field data-invalid={!!errors.prefix}>
                     <FieldLabel htmlFor="prefix">Prefix (optional)</FieldLabel>
@@ -767,6 +864,12 @@ function SourcesPage() {
                       <dt className="text-xs text-muted-foreground">Access Key ID</dt>
                       <dd className="font-mono">{source.config.accessKeyId}</dd>
                     </div>
+                    {source.config.endpoint && (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">Endpoint</dt>
+                        <dd className="font-mono">{source.config.endpoint}</dd>
+                      </div>
+                    )}
                     {source.config.prefix && (
                       <div>
                         <dt className="text-xs text-muted-foreground">Prefix</dt>
@@ -774,6 +877,20 @@ function SourcesPage() {
                       </div>
                     )}
                   </dl>
+                  {(source.config.forcePathStyle || source.config.tlsVerify === false) && (
+                    <div className="mt-2 flex gap-1.5">
+                      {source.config.forcePathStyle && (
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                          Path Style
+                        </span>
+                      )}
+                      {source.config.tlsVerify === false && (
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">
+                          TLS Unverified
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -797,6 +914,7 @@ function extractErrors(
     else if (path === 'config.region') errors.region = issue.message
     else if (path === 'config.accessKeyId') errors.accessKeyId = issue.message
     else if (path === 'config.secretAccessKey') errors.secretAccessKey = issue.message
+    else if (path === 'config.endpoint') errors.endpoint = issue.message
     else if (path === 'config.prefix') errors.prefix = issue.message
   }
   return errors
