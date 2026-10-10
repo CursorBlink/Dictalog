@@ -4,20 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-All commands run from `web/`:
+The web app uses pnpm; run commands from `web/`:
 
 ```bash
-npm run dev          # Start dev server on :3000
-npm run build        # Production build
-npm run test         # Run tests (vitest)
-npm run lint         # ESLint
-npm run format       # Prettier + ESLint fix
+pnpm install         # Install dependencies from pnpm-lock.yaml
+pnpm dev             # Start dev server on :3000
+pnpm build           # Production build
+pnpm test            # Run tests (vitest)
+pnpm lint            # Run Biome linter
+pnpm format          # Format and apply safe Biome fixes
+pnpm check           # Check formatting and lint rules
 
-npm run db:generate  # Generate SQL migration files (drizzle-kit generate)
-npm run db:push      # Push schema to DB without migration files (drizzle-kit push)
-npm run db:migrate   # Apply pending migrations (drizzle-kit migrate)
-npm run db:studio    # Open Drizzle Studio
-npm run db:seed      # Seed the database
+pnpm db:generate     # Generate SQL migration files (drizzle-kit generate)
+pnpm db:push         # Push schema to DB without migration files (drizzle-kit push)
+pnpm db:migrate      # Apply pending migrations (drizzle-kit migrate)
+pnpm db:studio       # Open Drizzle Studio
 ```
 
 DB commands require `web/.env` with `DATABASE_URL` (and `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` for auth). The `.envrc` loads `.env` automatically via direnv.
@@ -56,7 +57,7 @@ docker compose up -d  # from repo root
 
 **Adding components**: Always use the shadcn CLI to add new UI components — run from `web/`:
 ```bash
-npx shadcn@latest add <component-name>
+pnpm dlx shadcn@latest add <component-name>
 ```
 Never manually create component files in `src/components/ui/` when the CLI can generate them.
 
