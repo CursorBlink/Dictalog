@@ -75,7 +75,7 @@ const listSourceConfigs = createServerFn().handler(async () => {
 })
 
 const createSourceConfig = createServerFn({ method: 'POST' })
-  .inputValidator((data: unknown) => sourceConfigSchema.parse(data))
+  .validator((data: unknown) => sourceConfigSchema.parse(data))
   .handler(async ({ data }) => {
     const headers = getRequestHeaders()
     const session = await auth.api.getSession({ headers })
@@ -97,7 +97,7 @@ const createSourceConfig = createServerFn({ method: 'POST' })
   })
 
 const updateSourceConfig = createServerFn({ method: 'POST' })
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z
       .object({ id: z.string().min(1) })
       .merge(updateSourceConfigSchema)
@@ -132,7 +132,7 @@ const updateSourceConfig = createServerFn({ method: 'POST' })
   })
 
 const deleteSourceConfig = createServerFn({ method: 'POST' })
-  .inputValidator((data: unknown) => z.object({ id: z.string().min(1) }).parse(data))
+  .validator((data: unknown) => z.object({ id: z.string().min(1) }).parse(data))
   .handler(async ({ data }) => {
     const headers = getRequestHeaders()
     const session = await auth.api.getSession({ headers })
@@ -149,7 +149,7 @@ const deleteSourceConfig = createServerFn({ method: 'POST' })
   })
 
 const testS3ConnectionFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z
       .object({
         bucket: z.string().min(1),
