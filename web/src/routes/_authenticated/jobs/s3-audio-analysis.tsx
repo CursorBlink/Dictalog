@@ -203,8 +203,12 @@ function S3AudioAnalysisPage() {
         {result?.status === 'no_source' && (
           <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-center">
             <p className="text-sm text-muted-foreground">No S3 source configured yet.</p>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/settings/sources">Go to Settings → Sources</Link>
+            <Button
+              render={<Link to="/settings/sources" />}
+              size="sm"
+              variant="outline"
+            >
+              Go to Settings → Sources
             </Button>
           </div>
         )}

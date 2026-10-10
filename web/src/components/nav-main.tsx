@@ -37,39 +37,47 @@ export function NavMain({
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
-          <Collapsible key={item.title} asChild defaultOpen={item.isActive}>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip={item.title}>
-                <a href={item.url}>
-                  {item.icon}
-                  <span>{item.title}</span>
-                </a>
-              </SidebarMenuButton>
+          <Collapsible
+            key={item.title}
+            defaultOpen={item.isActive}
+            render={<SidebarMenuItem />}
+          >
+              <SidebarMenuButton
+                render={
+                  <a href={item.url}>
+                    {item.icon}
+                    <span>{item.title}</span>
+                  </a>
+                }
+                tooltip={item.title}
+              />
               {item.items?.length ? (
                 <>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuAction className="data-[state=open]:rotate-90">
-                      <ChevronRightIcon
-                      />
-                      <span className="sr-only">Toggle</span>
-                    </SidebarMenuAction>
-                  </CollapsibleTrigger>
+                  <CollapsibleTrigger
+                    render={
+                      <SidebarMenuAction className="data-panel-open:rotate-90">
+                        <ChevronRightIcon />
+                        <span className="sr-only">Toggle</span>
+                      </SidebarMenuAction>
+                    }
+                  />
                   <CollapsibleContent>
                     <SidebarMenuSub>
                       {item.items?.map((subItem) => (
                         <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton asChild>
-                            <a href={subItem.url}>
-                              <span>{subItem.title}</span>
-                            </a>
-                          </SidebarMenuSubButton>
+                          <SidebarMenuSubButton
+                            render={
+                              <a href={subItem.url}>
+                                <span>{subItem.title}</span>
+                              </a>
+                            }
+                          />
                         </SidebarMenuSubItem>
                       ))}
                     </SidebarMenuSub>
                   </CollapsibleContent>
                 </>
               ) : null}
-            </SidebarMenuItem>
           </Collapsible>
         ))}
       </SidebarMenu>
