@@ -1,25 +1,20 @@
 {
-  "projectName": "dictalog",
-  "mode": "file-router",
-  "typescript": true,
-  "packageManager": "npm",
-  "includeExamples": false,
-  "tailwind": true,
-  "addOnOptions": {
-    "prisma": {
-      "database": "postgres"
-    }
-  },
-  "envVarValues": {},
-  "git": false,
-  "install": true,
-  "routerOnly": false,
-  "version": 1,
-  "framework": "react",
-  "chosenAddOns": [
-    "eslint",
-    "prisma",
-    "shadcn",
-    "better-auth"
-  ]
+	"projectName": "dictalog",
+	"mode": "file-router",
+	"typescript": true,
+	"packageManager": "npm",
+	"includeExamples": false,
+	"tailwind": true,
+	"addOnOptions": {
+		"prisma": {
+			"database": "postgres"
+		}
+	},
+	"envVarValues": {},
+	"git": false,
+	"install": true,
+	"routerOnly": false,
+	"version": 1,
+	"framework": "react",
+	"chosenAddOns": ["eslint", "prisma", "shadcn", "better-auth"]
 }
