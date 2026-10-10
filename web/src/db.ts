@@ -1,17 +1,14 @@
-import { PrismaClient } from './generated/prisma/client.js'
-
-import { PrismaPg } from '@prisma/adapter-pg'
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-})
+import { drizzle } from 'drizzle-orm/node-postgres'
+import * as schema from './db/schema'
 
 declare global {
-  var __prisma: PrismaClient | undefined
+  var __db: ReturnType<typeof drizzle> | undefined
 }
 
-export const prisma = globalThis.__prisma || new PrismaClient({ adapter })
+export const db =
+  globalThis.__db ||
+  drizzle(process.env.DATABASE_URL!, { schema })
 
 if (process.env.NODE_ENV !== 'production') {
-  globalThis.__prisma = prisma
+  globalThis.__db = db
 }

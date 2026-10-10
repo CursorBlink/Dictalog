@@ -3,9 +3,11 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 import { Loader2Icon, CheckCircle2Icon, AlertTriangleIcon, AudioLinesIcon } from 'lucide-react'
+import { eq, and, desc } from 'drizzle-orm'
 
 import { auth } from '@/lib/auth'
-import { prisma } from '@/db'
+import { db } from '@/db'
+import { sourceConfig as sourceConfigTable } from '@/db/schema'
 import { Button } from '@/components/ui/button'
 import {
   Breadcrumb,
@@ -45,10 +47,17 @@ const listS3AudioFiles = createServerFn({ method: 'POST' }).handler(
     const session = await auth.api.getSession({ headers })
     if (!session) throw new Error('Unauthorized')
 
-    const sourceConfig = await prisma.sourceConfig.findFirst({
-      where: { userId: session.user.id, type: 'S3' },
-      orderBy: { createdAt: 'desc' },
-    })
+    const [sourceConfig] = await db
+      .select()
+      .from(sourceConfigTable)
+      .where(
+        and(
+          eq(sourceConfigTable.userId, session.user.id),
+          eq(sourceConfigTable.type, 'S3'),
+        ),
+      )
+      .orderBy(desc(sourceConfigTable.createdAt))
+      .limit(1)
 
     if (!sourceConfig) {
       return { status: 'no_source' }

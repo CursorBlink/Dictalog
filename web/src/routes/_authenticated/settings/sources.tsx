@@ -13,9 +13,12 @@ import {
   AlertTriangleIcon,
 } from 'lucide-react'
 import { z } from 'zod'
+import { eq, and, desc } from 'drizzle-orm'
+import { v7 as uuidv7 } from 'uuid'
 
 import { auth } from '@/lib/auth'
-import { prisma } from '@/db'
+import { db } from '@/db'
+import { sourceConfig as sourceConfigTable } from '@/db/schema'
 import { sourceConfigSchema, updateSourceConfigSchema } from '@/lib/schemas/source-config'
 
 import { Button } from '@/components/ui/button'
@@ -44,10 +47,11 @@ const listSourceConfigs = createServerFn().handler(async () => {
   const session = await auth.api.getSession({ headers })
   if (!session) throw new Error('Unauthorized')
 
-  const configs = await prisma.sourceConfig.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: 'desc' },
-  })
+  const configs = await db
+    .select()
+    .from(sourceConfigTable)
+    .where(eq(sourceConfigTable.userId, session.user.id))
+    .orderBy(desc(sourceConfigTable.createdAt))
 
   return configs.map((c) => {
     const cfg = c.config as Record<string, unknown>
@@ -77,14 +81,19 @@ const createSourceConfig = createServerFn({ method: 'POST' })
     const session = await auth.api.getSession({ headers })
     if (!session) throw new Error('Unauthorized')
 
-    return prisma.sourceConfig.create({
-      data: {
+    const [created] = await db
+      .insert(sourceConfigTable)
+      .values({
+        id: uuidv7(),
         userId: session.user.id,
         name: data.name,
         type: data.type,
         config: data.config,
-      },
-    })
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+    return created
   })
 
 const updateSourceConfig = createServerFn({ method: 'POST' })
@@ -99,20 +108,27 @@ const updateSourceConfig = createServerFn({ method: 'POST' })
     const session = await auth.api.getSession({ headers })
     if (!session) throw new Error('Unauthorized')
 
-    const existing = await prisma.sourceConfig.findUnique({ where: { id: data.id } })
+    const [existing] = await db
+      .select()
+      .from(sourceConfigTable)
+      .where(eq(sourceConfigTable.id, data.id))
+      .limit(1)
     if (!existing || existing.userId !== session.user.id) throw new Error('Not found')
 
     const existingCfg = existing.config as Record<string, string>
     const secretAccessKey = data.config.secretAccessKey || existingCfg.secretAccessKey
 
-    return prisma.sourceConfig.update({
-      where: { id: data.id },
-      data: {
+    const [updated] = await db
+      .update(sourceConfigTable)
+      .set({
         name: data.name,
         type: data.type,
         config: { ...data.config, secretAccessKey },
-      },
-    })
+        updatedAt: new Date(),
+      })
+      .where(eq(sourceConfigTable.id, data.id))
+      .returning()
+    return updated
   })
 
 const deleteSourceConfig = createServerFn({ method: 'POST' })
@@ -122,10 +138,14 @@ const deleteSourceConfig = createServerFn({ method: 'POST' })
     const session = await auth.api.getSession({ headers })
     if (!session) throw new Error('Unauthorized')
 
-    const existing = await prisma.sourceConfig.findUnique({ where: { id: data.id } })
+    const [existing] = await db
+      .select()
+      .from(sourceConfigTable)
+      .where(eq(sourceConfigTable.id, data.id))
+      .limit(1)
     if (!existing || existing.userId !== session.user.id) throw new Error('Not found')
 
-    return prisma.sourceConfig.delete({ where: { id: data.id } })
+    await db.delete(sourceConfigTable).where(eq(sourceConfigTable.id, data.id))
   })
 
 const testS3ConnectionFn = createServerFn({ method: 'POST' })
