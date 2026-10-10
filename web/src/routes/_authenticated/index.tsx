@@ -1,10 +1,7 @@
-import { createFileRoute, useRouteContext } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_authenticated/')({
-  component: RouteComponent,
+  beforeLoad: () => {
+    throw redirect({ to: '/dashboard' })
+  },
 })
-
-function RouteComponent() {
-  const { user } = useRouteContext({ from: '/_authenticated' })
-  return <div>Hello { user.name }!</div>
-}
