@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import {
 	AlertTriangleIcon,
 	CheckCircle2Icon,
@@ -189,7 +189,7 @@ const testS3ConnectionFn = createServerFn({ method: "POST" })
 
 		let requestHandler: unknown;
 		if (data.tlsVerify === false) {
-			const https = await import("https");
+			const https = await import("node:https");
 			const { NodeHttpHandler } = await import("@smithy/node-http-handler");
 			requestHandler = new NodeHttpHandler({
 				httpsAgent: new https.Agent({ rejectUnauthorized: false }),

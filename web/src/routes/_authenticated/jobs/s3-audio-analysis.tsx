@@ -91,7 +91,7 @@ const listS3AudioFiles = createServerFn({ method: "POST" }).handler(
 
 		let requestHandler: unknown;
 		if (tlsVerify === false) {
-			const https = await import("https");
+			const https = await import("node:https");
 			const { NodeHttpHandler } = await import("@smithy/node-http-handler");
 			requestHandler = new NodeHttpHandler({
 				httpsAgent: new https.Agent({ rejectUnauthorized: false }),
