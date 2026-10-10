@@ -42,15 +42,16 @@ export function NavProjects({
               </a>
             </SidebarMenuButton>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuAction
-                  showOnHover
-                  className="aria-expanded:bg-muted"
-                >
-                  <MoreHorizontalIcon
+              <DropdownMenuTrigger
+                render={
+                  <SidebarMenuAction
+                    showOnHover
+                    className="aria-expanded:bg-muted"
                   />
-                  <span className="sr-only">More</span>
-                </SidebarMenuAction>
+                }
+              >
+                <MoreHorizontalIcon />
+                <span className="sr-only">More</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 className="w-48"
