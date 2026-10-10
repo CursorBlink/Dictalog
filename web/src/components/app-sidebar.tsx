@@ -1,11 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { createFileRoute, useRouteContext } from '@tanstack/react-router'
+import { useRouteContext } from '@tanstack/react-router'
 
 import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
-import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -16,98 +14,19 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, LifeBuoyIcon, SendIcon, FrameIcon, PieChartIcon, MapIcon, TerminalIcon, BriefcaseIcon } from "lucide-react"
+import { LayoutDashboard, ScrollText, Settings2, TerminalIcon } from "lucide-react"
 
 const data = {
- navMain: [
+  navMain: [
     {
-      title: "Playground",
-      url: "#",
-      icon: (
-        <TerminalSquareIcon
-        />
-      ),
-      isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: (
-        <BotIcon
-        />
-      ),
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: (
-        <BookOpenIcon
-        />
-      ),
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Jobs",
-      url: "/jobs/s3-audio-analysis",
-      icon: (
-        <BriefcaseIcon
-        />
-      ),
-      items: [
-        {
-          title: "S3 Audio Analysis",
-          url: "/jobs/s3-audio-analysis",
-        },
-      ],
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: <LayoutDashboard />,
     },
     {
       title: "Settings",
       url: "/settings/sources",
-      icon: (
-        <Settings2Icon
-        />
-      ),
+      icon: <Settings2 />,
       items: [
         {
           title: "Sources",
@@ -115,49 +34,10 @@ const data = {
         },
       ],
     },
-  ],
-  navSecondary: [
     {
-      title: "Support",
-      url: "#",
-      icon: (
-        <LifeBuoyIcon
-        />
-      ),
-    },
-    {
-      title: "Feedback",
-      url: "#",
-      icon: (
-        <SendIcon
-        />
-      ),
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: (
-        <FrameIcon
-        />
-      ),
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: (
-        <PieChartIcon
-        />
-      ),
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: (
-        <MapIcon
-        />
-      ),
+      title: "Log",
+      url: "/log",
+      icon: <ScrollText />,
     },
   ],
 }
@@ -185,8 +65,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        { /* <NavProjects projects={data.projects} /> */}
-        { /* <NavSecondary items={data.navSecondary} className="mt-auto" /> */ }
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />

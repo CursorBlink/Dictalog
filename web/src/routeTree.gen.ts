@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedLogRouteImport } from './routes/_authenticated/log'
 import { Route as AuthenticatedJobsRouteImport } from './routes/_authenticated/jobs'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
@@ -50,6 +51,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedLogRoute = AuthenticatedLogRouteImport.update({
+  id: '/log',
+  path: '/log',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedJobsRoute = AuthenticatedJobsRouteImport.update({
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/sign-up': typeof SignUpRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/jobs': typeof AuthenticatedJobsRouteWithChildren
+  '/log': typeof AuthenticatedLogRoute
   '/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/jobs/s3-audio-analysis': typeof AuthenticatedJobsS3AudioAnalysisRoute
   '/settings/sources': typeof AuthenticatedSettingsSourcesRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/sign-out': typeof SignOutRoute
   '/sign-up': typeof SignUpRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/log': typeof AuthenticatedLogRoute
   '/': typeof AuthenticatedIndexRoute
   '/jobs/s3-audio-analysis': typeof AuthenticatedJobsS3AudioAnalysisRoute
   '/settings/sources': typeof AuthenticatedSettingsSourcesRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/sign-up': typeof SignUpRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/jobs': typeof AuthenticatedJobsRouteWithChildren
+  '/_authenticated/log': typeof AuthenticatedLogRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/jobs/s3-audio-analysis': typeof AuthenticatedJobsS3AudioAnalysisRoute
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/dashboard'
     | '/jobs'
+    | '/log'
     | '/settings'
     | '/jobs/s3-audio-analysis'
     | '/settings/sources'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/sign-out'
     | '/sign-up'
     | '/dashboard'
+    | '/log'
     | '/'
     | '/jobs/s3-audio-analysis'
     | '/settings/sources'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/_authenticated/dashboard'
     | '/_authenticated/jobs'
+    | '/_authenticated/log'
     | '/_authenticated/settings'
     | '/_authenticated/'
     | '/_authenticated/jobs/s3-audio-analysis'
@@ -227,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/log': {
+      id: '/_authenticated/log'
+      path: '/log'
+      fullPath: '/log'
+      preLoaderRoute: typeof AuthenticatedLogRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/jobs': {
@@ -312,6 +331,7 @@ const AuthenticatedSettingsRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedJobsRoute: typeof AuthenticatedJobsRouteWithChildren
+  AuthenticatedLogRoute: typeof AuthenticatedLogRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
@@ -319,6 +339,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedJobsRoute: AuthenticatedJobsRouteWithChildren,
+  AuthenticatedLogRoute: AuthenticatedLogRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
