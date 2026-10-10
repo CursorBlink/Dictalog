@@ -4,7 +4,7 @@
 
 ## Changed
 
-- `web/src/components/ui/label.tsx`: removed the Radix Label dependency and renders a native label with the existing `data-slot`, classes, and native label props. Leftover scan `grep -n "radix-ui\\|@radix-ui"` is clean.
+- `web/src/components/ui/label.tsx`: removed the Radix Label dependency and renders a native label with the existing `data-slot`, classes, and native label props. Added a Biome note clarifying that control association is supplied at the call site. Leftover scan `grep -n "radix-ui\\|@radix-ui"` is clean.
 - `web/src/components/ui/field.tsx`: inspected consumers; it continues to use the wrapper through native label-compatible props, so no consumer edits were required.
 
 ## Left alone

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 
 function Label({ className, ...props }: React.ComponentProps<"label">) {
   return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: The associated control is provided by the caller.
     <label
       data-slot="label"
       className={cn(
